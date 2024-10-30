@@ -1,0 +1,17 @@
+{
+  "incomingRecords": [
+    {
+      "id": "1730292530133",
+      "name": "Oil  5ltrs",
+      "quantity": 5,
+      "cost": "3000",
+      "method": "jsjds",
+      "supplier": "skksx",
+      "condition": "ddfdfn",
+      "comment": "none",
+      "enteredBy": "Mansur",
+      "date": "10/30/2024, 5:48:50 AM"
+    }
+  ],
+  "outgoingRecords": []
+}
