@@ -87,11 +87,24 @@ router.put("/outgoing/:id", (req, res) => {
 
 // GET endpoint to download the JSON file
 router.get("/download", (req, res) => {
-  res.download(recordsFilePath, "records.json", (err) => {
-    if (err) {
-      res.status(500).json({ error: "Failed to download file" });
-    }
+    // Get the current date
+    const currentDate = new Date();
+    
+    // Format the date as MM-DD-YYYY
+    const formattedDate = currentDate.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit"
+    }).replace(/\//g, "-"); // Replace slashes with dashes
+  
+    // Create the filename with the current date
+    const filename = `records-${formattedDate}.json`;
+  
+    res.download(recordsFilePath, filename, (err) => {
+      if (err) {
+        res.status(500).json({ error: "Failed to download file" });
+      }
+    });
   });
-});
 
 module.exports = router;
