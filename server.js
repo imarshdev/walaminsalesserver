@@ -14,8 +14,41 @@ app.use(cors());
 app.use(bodyParser.json());
 app.use("/api/records", recordsRoutes);
 app.use("/api/products", productsRoutes);
-app.get("/records.json", (req, res) => {
-  res.json(require("./records.json")); // Assuming records.json is in the same directory
+// Endpoint to read JSON file
+app.get("/api/records", (req, res) => {
+  const jsonFilePath = path.join(__dirname, "records.json");
+
+  fs.readFile(jsonFilePath, "utf8", (err, data) => {
+    if (err) {
+      console.error("Error reading file:", err);
+      return res.status(500).send("Error reading data");
+    }
+    try {
+      const jsonData = JSON.parse(data);
+      res.json(jsonData);
+    } catch (parseErr) {
+      console.error("Error parsing JSON:", parseErr);
+      res.status(500).send("Error parsing data");
+    }
+  });
+});
+// Endpoint to read JSON file
+app.get("/api/products", (req, res) => {
+  const jsonFilePath = path.join(__dirname, "products.json");
+
+  fs.readFile(jsonFilePath, "utf8", (err, data) => {
+    if (err) {
+      console.error("Error reading file:", err);
+      return res.status(500).send("Error reading data");
+    }
+    try {
+      const jsonData = JSON.parse(data);
+      res.json(jsonData);
+    } catch (parseErr) {
+      console.error("Error parsing JSON:", parseErr);
+      res.status(500).send("Error parsing data");
+    }
+  });
 });
 
 // Start server
