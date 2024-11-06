@@ -14,6 +14,9 @@ app.use(cors());
 app.use(bodyParser.json());
 app.use("/api/records", recordsRoutes);
 app.use("/api/products", productsRoutes);
+app.get("/records.json", (req, res) => {
+  res.json(require("./records.json")); // Assuming records.json is in the same directory
+});
 
 // Start server
 app.listen(PORT, () => {
