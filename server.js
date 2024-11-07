@@ -91,14 +91,38 @@ app.post("/api/products", async (req, res) => {
   }
 });
 
-// Records routes
+// Get records with dynamic filters
 app.get("/api/records", async (req, res) => {
+  const filters = req.query; // Extract all query parameters
+
+  // Create an empty query object to hold filtering conditions
+  let query = {};
+
+  // Loop through each query parameter and add it to the filter
+  for (let key in filters) {
+    if (filters[key]) {
+      if (key === 'date') {
+        // Handle date filter (if a specific date is given)
+        const date = new Date(filters[key]);
+        const nextDay = new Date(date);
+        nextDay.setDate(nextDay.getDate() + 1);
+
+        query[key] = {
+          $gte: date.toISOString(),
+          $lt: nextDay.toISOString(),
+        };
+      } else {
+        query[key] = filters[key]; // For other fields, use them as is (e.g., "name", "quantity")
+      }
+    }
+  }
+
   try {
     const recordsCollection = db.collection("records");
-    const records = await recordsCollection.find().toArray();
-    res.json(records);
+    const records = await recordsCollection.find(query).toArray();
+    res.json(records); // Return the filtered records
   } catch (err) {
-    res.status(500).json({ message: "Error retrieving records" });
+    res.status(500).json({ message: "Error retrieving records", error: err.message });
   }
 });
 
