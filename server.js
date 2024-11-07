@@ -74,8 +74,8 @@ app.put("/api/products/:name", async (req, res) => {
 app.post("/api/products", async (req, res) => {
   const { name, quantity, price } = req.body;
 
-  if (!name || quantity || price == null) {
-    return res.status(400).json({ message: "Name and quantity are required" });
+  if (!name || quantity == null || price == null) {
+    return res.status(400).json({ message: "Name, quantity, and price are required" });
   }
 
   const newProduct = { name, quantity, price };
@@ -85,9 +85,8 @@ app.post("/api/products", async (req, res) => {
     const result = await productsCollection.insertOne(newProduct);
     res.status(201).json(result.ops[0]);
   } catch (err) {
-    res
-      .status(400)
-      .json({ message: "Error saving product", error: err.message });
+    console.error("Error saving product:", err); // Log detailed error
+    res.status(400).json({ message: "Error saving product", error: err.message });
   }
 });
 
