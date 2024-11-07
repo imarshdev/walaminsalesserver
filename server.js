@@ -1,7 +1,7 @@
 // server.js
 const express = require("express");
-PORT = 5000;
 const app = express();
+const PORT = 5000;
 
 // Start server
 app.listen(PORT, () => {
