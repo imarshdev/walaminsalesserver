@@ -72,13 +72,13 @@ app.put("/api/products/:name", async (req, res) => {
 });
 
 app.post("/api/products", async (req, res) => {
-  const { name, quantity } = req.body;
+  const { name, quantity, price } = req.body;
 
-  if (!name || quantity == null) {
+  if (!name || quantity || price == null) {
     return res.status(400).json({ message: "Name and quantity are required" });
   }
 
-  const newProduct = { name, quantity };
+  const newProduct = { name, quantity, price };
 
   try {
     const productsCollection = db.collection("products");
@@ -101,7 +101,7 @@ app.get("/api/records", async (req, res) => {
   // Loop through each query parameter and add it to the filter
   for (let key in filters) {
     if (filters[key]) {
-      if (key === 'date') {
+      if (key === "date") {
         // Handle date filter (if a specific date is given)
         const date = new Date(filters[key]);
         const nextDay = new Date(date);
@@ -122,7 +122,9 @@ app.get("/api/records", async (req, res) => {
     const records = await recordsCollection.find(query).toArray();
     res.json(records); // Return the filtered records
   } catch (err) {
-    res.status(500).json({ message: "Error retrieving records", error: err.message });
+    res
+      .status(500)
+      .json({ message: "Error retrieving records", error: err.message });
   }
 });
 
