@@ -80,7 +80,6 @@ app.post("/api/products", async (req, res) => {
     !name ||
     quantity == null ||
     costPrice == null ||
-    salesPrice == null ||
     !supplier
   ) {
     return res.status(400).json({
@@ -93,7 +92,6 @@ app.post("/api/products", async (req, res) => {
     name,
     quantity,
     costPrice,
-    salesPrice,
     supplier,
     supplierContact,
   };
