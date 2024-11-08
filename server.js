@@ -66,27 +66,50 @@ app.put("/api/products/:name", async (req, res) => {
     const updatedProduct = await productsCollection.findOne({ name });
     res.json(updatedProduct);
   } catch (err) {
-    res.status(400).json({ message: "Error updating product", error: err.message });
+    res
+      .status(400)
+      .json({ message: "Error updating product", error: err.message });
   }
 });
 
 app.post("/api/products", async (req, res) => {
-  const { name, quantity, costPrice, salesPrice, supplier } = req.body;
+  const { name, quantity, costPrice, salesPrice, supplier, supplierContact } =
+    req.body;
 
-  if (!name || quantity == null || costPrice == null || salesPrice == null || !supplier) {
-    return res.status(400).json({ message: "Name, quantity, cost price, sales price, and supplier are required" });
+  if (
+    !name ||
+    quantity == null ||
+    costPrice == null ||
+    salesPrice == null ||
+    !supplier
+  ) {
+    return res.status(400).json({
+      message:
+        "Name, quantity, cost price, sales price, and supplier are required",
+    });
   }
 
-  const newProduct = { name, quantity, costPrice, salesPrice, supplier };
+  const newProduct = {
+    name,
+    quantity,
+    costPrice,
+    salesPrice,
+    supplier,
+    supplierContact,
+  };
 
   try {
     const productsCollection = db.collection("products");
     const result = await productsCollection.insertOne(newProduct);
-    const insertedProduct = await productsCollection.findOne({ _id: result.insertedId });
+    const insertedProduct = await productsCollection.findOne({
+      _id: result.insertedId,
+    });
     res.status(201).json(insertedProduct);
   } catch (err) {
     console.error("Error saving product:", err);
-    res.status(400).json({ message: "Error saving product", error: err.message });
+    res
+      .status(400)
+      .json({ message: "Error saving product", error: err.message });
   }
 });
 
@@ -117,7 +140,9 @@ app.get("/api/records", async (req, res) => {
     const records = await recordsCollection.find(query).toArray();
     res.json(records);
   } catch (err) {
-    res.status(500).json({ message: "Error retrieving records", error: err.message });
+    res
+      .status(500)
+      .json({ message: "Error retrieving records", error: err.message });
   }
 });
 
@@ -128,10 +153,14 @@ app.post("/api/records/:type", async (req, res) => {
   try {
     const recordsCollection = db.collection("records");
     const result = await recordsCollection.insertOne(newRecord);
-    const insertedRecord = await recordsCollection.findOne({ _id: result.insertedId });
+    const insertedRecord = await recordsCollection.findOne({
+      _id: result.insertedId,
+    });
     res.status(201).json(insertedRecord);
   } catch (err) {
-    res.status(400).json({ message: "Error saving record", error: err.message });
+    res
+      .status(400)
+      .json({ message: "Error saving record", error: err.message });
   }
 });
 
@@ -152,7 +181,9 @@ app.put("/api/records/:type/:id", async (req, res) => {
 
     res.json(updatedRecord.value);
   } catch (err) {
-    res.status(400).json({ message: "Error updating record", error: err.message });
+    res
+      .status(400)
+      .json({ message: "Error updating record", error: err.message });
   }
 });
 
@@ -173,22 +204,28 @@ app.get("/api/records/download", async (req, res) => {
 
 // Customer routes
 app.post("/api/customers", async (req, res) => {
-  const { name, business, location } = req.body;
+  const { name, business, location, contact } = req.body;
 
   if (!name || !business || !location) {
-    return res.status(400).json({ message: "Name, business, and location are required" });
+    return res
+      .status(400)
+      .json({ message: "Name, business, and location are required" });
   }
 
-  const newCustomer = { name, business, location };
+  const newCustomer = { name, business, location, contact };
 
   try {
     const customersCollection = db.collection("customers");
     const result = await customersCollection.insertOne(newCustomer);
-    const insertedCustomer = await customersCollection.findOne({ _id: result.insertedId });
+    const insertedCustomer = await customersCollection.findOne({
+      _id: result.insertedId,
+    });
     res.status(201).json(insertedCustomer);
   } catch (err) {
     console.error("Error saving customer:", err);
-    res.status(400).json({ message: "Error saving customer", error: err.message });
+    res
+      .status(400)
+      .json({ message: "Error saving customer", error: err.message });
   }
 });
 
