@@ -3,7 +3,7 @@ const express = require("express");
 require("dotenv").config();
 const bodyParser = require("body-parser");
 const cors = require("cors");
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 
 const app = express();
 const PORT = 5000;
@@ -59,31 +59,22 @@ app.put("/api/products/:name", async (req, res) => {
       { $inc: { quantity: quantityChange } }
     );
 
-    if (result.matchedCount === 0)
+    if (result.matchedCount === 0) {
       return res.status(404).json({ message: "Product not found" });
+    }
 
     const updatedProduct = await productsCollection.findOne({ name });
     res.json(updatedProduct);
   } catch (err) {
-    res
-      .status(400)
-      .json({ message: "Error updating product", error: err.message });
+    res.status(400).json({ message: "Error updating product", error: err.message });
   }
 });
 
 app.post("/api/products", async (req, res) => {
-  const { name, quantity, price } = req.body;
+  const { name, quantity, costPrice, salesPrice, supplier } = req.body;
 
-  if (
-    !name ||
-    quantity == null ||
-    costPrice == null ||
-    salesPrice == null ||
-    !supplier
-  ) {
-    return res
-      .status(400)
-      .json({ message: "Name, quantity, and price are required" });
+  if (!name || quantity == null || costPrice == null || salesPrice == null || !supplier) {
+    return res.status(400).json({ message: "Name, quantity, cost price, sales price, and supplier are required" });
   }
 
   const newProduct = { name, quantity, costPrice, salesPrice, supplier };
@@ -91,27 +82,22 @@ app.post("/api/products", async (req, res) => {
   try {
     const productsCollection = db.collection("products");
     const result = await productsCollection.insertOne(newProduct);
-    res.status(201).json(result.ops[0]);
+    const insertedProduct = await productsCollection.findOne({ _id: result.insertedId });
+    res.status(201).json(insertedProduct);
   } catch (err) {
-    console.error("Error saving product:", err); // Log detailed error
-    res
-      .status(400)
-      .json({ message: "Error saving product", error: err.message });
+    console.error("Error saving product:", err);
+    res.status(400).json({ message: "Error saving product", error: err.message });
   }
 });
 
 // Get records with dynamic filters
 app.get("/api/records", async (req, res) => {
-  const filters = req.query; // Extract all query parameters
-
-  // Create an empty query object to hold filtering conditions
+  const filters = req.query;
   let query = {};
 
-  // Loop through each query parameter and add it to the filter
   for (let key in filters) {
     if (filters[key]) {
       if (key === "date") {
-        // Handle date filter (if a specific date is given)
         const date = new Date(filters[key]);
         const nextDay = new Date(date);
         nextDay.setDate(nextDay.getDate() + 1);
@@ -121,7 +107,7 @@ app.get("/api/records", async (req, res) => {
           $lt: nextDay.toISOString(),
         };
       } else {
-        query[key] = filters[key]; // For other fields, use them as is (e.g., "name", "quantity")
+        query[key] = filters[key];
       }
     }
   }
@@ -129,11 +115,9 @@ app.get("/api/records", async (req, res) => {
   try {
     const recordsCollection = db.collection("records");
     const records = await recordsCollection.find(query).toArray();
-    res.json(records); // Return the filtered records
+    res.json(records);
   } catch (err) {
-    res
-      .status(500)
-      .json({ message: "Error retrieving records", error: err.message });
+    res.status(500).json({ message: "Error retrieving records", error: err.message });
   }
 });
 
@@ -144,11 +128,10 @@ app.post("/api/records/:type", async (req, res) => {
   try {
     const recordsCollection = db.collection("records");
     const result = await recordsCollection.insertOne(newRecord);
-    res.status(201).json(result.ops[0]);
+    const insertedRecord = await recordsCollection.findOne({ _id: result.insertedId });
+    res.status(201).json(insertedRecord);
   } catch (err) {
-    res
-      .status(400)
-      .json({ message: "Error saving record", error: err.message });
+    res.status(400).json({ message: "Error saving record", error: err.message });
   }
 });
 
@@ -158,19 +141,18 @@ app.put("/api/records/:type/:id", async (req, res) => {
   try {
     const recordsCollection = db.collection("records");
     const updatedRecord = await recordsCollection.findOneAndUpdate(
-      { id },
+      { _id: new ObjectId(id) },
       { $set: req.body },
       { returnDocument: "after" }
     );
 
-    if (!updatedRecord.value)
+    if (!updatedRecord.value) {
       return res.status(404).json({ message: "Record not found" });
+    }
 
     res.json(updatedRecord.value);
   } catch (err) {
-    res
-      .status(400)
-      .json({ message: "Error updating record", error: err.message });
+    res.status(400).json({ message: "Error updating record", error: err.message });
   }
 });
 
@@ -189,15 +171,12 @@ app.get("/api/records/download", async (req, res) => {
   }
 });
 
-
-// Create customer route
+// Customer routes
 app.post("/api/customers", async (req, res) => {
   const { name, business, location } = req.body;
 
   if (!name || !business || !location) {
-    return res
-      .status(400)
-      .json({ message: "Name, business, and location are required" });
+    return res.status(400).json({ message: "Name, business, and location are required" });
   }
 
   const newCustomer = { name, business, location };
@@ -205,17 +184,14 @@ app.post("/api/customers", async (req, res) => {
   try {
     const customersCollection = db.collection("customers");
     const result = await customersCollection.insertOne(newCustomer);
-    res.status(201).json(result.ops[0]);
+    const insertedCustomer = await customersCollection.findOne({ _id: result.insertedId });
+    res.status(201).json(insertedCustomer);
   } catch (err) {
     console.error("Error saving customer:", err);
-    res
-      .status(400)
-      .json({ message: "Error saving customer", error: err.message });
+    res.status(400).json({ message: "Error saving customer", error: err.message });
   }
 });
 
-
-// Fetch customers route
 app.get("/api/customers", async (req, res) => {
   try {
     const customersCollection = db.collection("customers");
@@ -225,8 +201,6 @@ app.get("/api/customers", async (req, res) => {
     res.status(500).json({ message: "Error retrieving customers" });
   }
 });
-
-
 
 // Start server
 app.listen(PORT, () => {
