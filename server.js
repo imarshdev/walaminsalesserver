@@ -74,11 +74,19 @@ app.put("/api/products/:name", async (req, res) => {
 app.post("/api/products", async (req, res) => {
   const { name, quantity, price } = req.body;
 
-  if (!name || quantity == null || price == null) {
-    return res.status(400).json({ message: "Name, quantity, and price are required" });
+  if (
+    !name ||
+    quantity == null ||
+    costPrice == null ||
+    salesPrice == null ||
+    !supplier
+  ) {
+    return res
+      .status(400)
+      .json({ message: "Name, quantity, and price are required" });
   }
 
-  const newProduct = { name, quantity, price };
+  const newProduct = { name, quantity, costPrice, salesPrice, supplier };
 
   try {
     const productsCollection = db.collection("products");
@@ -86,7 +94,9 @@ app.post("/api/products", async (req, res) => {
     res.status(201).json(result.ops[0]);
   } catch (err) {
     console.error("Error saving product:", err); // Log detailed error
-    res.status(400).json({ message: "Error saving product", error: err.message });
+    res
+      .status(400)
+      .json({ message: "Error saving product", error: err.message });
   }
 });
 
@@ -178,6 +188,45 @@ app.get("/api/records/download", async (req, res) => {
     res.status(500).json({ message: "Failed to download records" });
   }
 });
+
+
+// Create customer route
+app.post("/api/customers", async (req, res) => {
+  const { name, business, location } = req.body;
+
+  if (!name || !business || !location) {
+    return res
+      .status(400)
+      .json({ message: "Name, business, and location are required" });
+  }
+
+  const newCustomer = { name, business, location };
+
+  try {
+    const customersCollection = db.collection("customers");
+    const result = await customersCollection.insertOne(newCustomer);
+    res.status(201).json(result.ops[0]);
+  } catch (err) {
+    console.error("Error saving customer:", err);
+    res
+      .status(400)
+      .json({ message: "Error saving customer", error: err.message });
+  }
+});
+
+
+// Fetch customers route
+app.get("/api/customers", async (req, res) => {
+  try {
+    const customersCollection = db.collection("customers");
+    const customers = await customersCollection.find().toArray();
+    res.json(customers);
+  } catch (err) {
+    res.status(500).json({ message: "Error retrieving customers" });
+  }
+});
+
+
 
 // Start server
 app.listen(PORT, () => {
