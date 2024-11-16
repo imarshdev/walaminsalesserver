@@ -44,6 +44,24 @@ app.get("/api/products", async (req, res) => {
   }
 });
 
+// Delete a product by name
+app.delete("/api/products/:name", async (req, res) => {
+  const { name } = req.params;
+
+  try {
+    const productsCollection = db.collection("products");
+    const result = await productsCollection.deleteOne({ name });
+
+    if (result.deletedCount === 0) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+
+    res.json({ message: "Product deleted successfully" });
+  } catch (err) {
+    res.status(500).json({ message: "Error deleting product", error: err.message });
+  }
+});
+
 app.put("/api/products/:name", async (req, res) => {
   const { name } = req.params;
   const { quantityChange } = req.body;
@@ -73,7 +91,7 @@ app.put("/api/products/:name", async (req, res) => {
 });
 
 app.post("/api/products", async (req, res) => {
-  const { name, quantity, costPrice, salesPrice, supplier, supplierContact } =
+  const { name, quantity, costPrice, supplier, supplierContact } =
     req.body;
 
   if (
@@ -110,6 +128,25 @@ app.post("/api/products", async (req, res) => {
       .json({ message: "Error saving product", error: err.message });
   }
 });
+
+// Bulk import/export products
+app.post("/api/products/bulk", async (req, res) => {
+  const { products } = req.body;
+
+  if (!Array.isArray(products) || products.length === 0) {
+    return res.status(400).json({ message: "Invalid product list" });
+  }
+
+  try {
+    const productsCollection = db.collection("products");
+    const result = await productsCollection.insertMany(products);
+    res.status(201).json({ message: "Bulk import successful", result });
+  } catch (err) {
+    res.status(500).json({ message: "Error performing bulk operation", error: err.message });
+  }
+});
+
+
 
 // Get records with dynamic filters
 app.get("/api/records", async (req, res) => {
@@ -200,6 +237,24 @@ app.get("/api/records/download", async (req, res) => {
   }
 });
 
+
+// Get stats for incoming and outgoing records
+app.get("/api/records/stats", async (req, res) => {
+  try {
+    const recordsCollection = db.collection("records");
+
+    // Aggregate stats by type
+    const stats = await recordsCollection.aggregate([
+      { $group: { _id: "$type", count: { $sum: 1 } } },
+    ]).toArray();
+
+    res.json(stats);
+  } catch (err) {
+    res.status(500).json({ message: "Error retrieving stats", error: err.message });
+  }
+});
+
+
 // Customer routes
 app.post("/api/customers", async (req, res) => {
   const { name, business, location, contact } = req.body;
@@ -236,6 +291,45 @@ app.get("/api/customers", async (req, res) => {
     res.status(500).json({ message: "Error retrieving customers" });
   }
 });
+
+
+// Search for customers with filters
+app.get("/api/customers/search", async (req, res) => {
+  const filters = req.query;
+
+  try {
+    const customersCollection = db.collection("customers");
+    const customers = await customersCollection.find(filters).toArray();
+    res.json(customers);
+  } catch (err) {
+    res.status(500).json({ message: "Error searching customers", error: err.message });
+  }
+});
+
+
+// Fetch dashboard stats (e.g., total products, records, customers)
+app.get("/api/dashboard/stats", async (req, res) => {
+  try {
+    const productsCollection = db.collection("products");
+    const recordsCollection = db.collection("records");
+    const customersCollection = db.collection("customers");
+
+    const [productCount, recordCount, customerCount] = await Promise.all([
+      productsCollection.countDocuments(),
+      recordsCollection.countDocuments(),
+      customersCollection.countDocuments(),
+    ]);
+
+    res.json({
+      totalProducts: productCount,
+      totalRecords: recordCount,
+      totalCustomers: customerCount,
+    });
+  } catch (err) {
+    res.status(500).json({ message: "Error retrieving dashboard stats", error: err.message });
+  }
+});
+
 
 // Start server
 app.listen(PORT, () => {
