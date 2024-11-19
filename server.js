@@ -35,6 +35,7 @@ client
 
 // Products routes
 app.get("/api/products", async (req, res) => {
+  // done
   try {
     const productsCollection = db.collection("products");
     const products = await productsCollection.find().toArray();
@@ -46,6 +47,7 @@ app.get("/api/products", async (req, res) => {
 
 // Delete a product by name
 app.delete("/api/products/:name", async (req, res) => {
+  // not done
   const { name } = req.params;
 
   try {
@@ -58,11 +60,14 @@ app.delete("/api/products/:name", async (req, res) => {
 
     res.json({ message: "Product deleted successfully" });
   } catch (err) {
-    res.status(500).json({ message: "Error deleting product", error: err.message });
+    res
+      .status(500)
+      .json({ message: "Error deleting product", error: err.message });
   }
 });
 
 app.put("/api/products/:name", async (req, res) => {
+  // done
   const { name } = req.params;
   const { quantityChange } = req.body;
 
@@ -91,15 +96,10 @@ app.put("/api/products/:name", async (req, res) => {
 });
 
 app.post("/api/products", async (req, res) => {
-  const { name, quantity, costPrice, supplier, supplierContact } =
-    req.body;
+  // done
+  const { name, quantity, costPrice, supplier, supplierContact } = req.body;
 
-  if (
-    !name ||
-    quantity == null ||
-    costPrice == null ||
-    !supplier
-  ) {
+  if (!name || quantity == null || costPrice == null || !supplier) {
     return res.status(400).json({
       message:
         "Name, quantity, cost price, sales price, and supplier are required",
@@ -131,6 +131,7 @@ app.post("/api/products", async (req, res) => {
 
 // Bulk import/export products
 app.post("/api/products/bulk", async (req, res) => {
+  // not done
   const { products } = req.body;
 
   if (!Array.isArray(products) || products.length === 0) {
@@ -142,14 +143,15 @@ app.post("/api/products/bulk", async (req, res) => {
     const result = await productsCollection.insertMany(products);
     res.status(201).json({ message: "Bulk import successful", result });
   } catch (err) {
-    res.status(500).json({ message: "Error performing bulk operation", error: err.message });
+    res
+      .status(500)
+      .json({ message: "Error performing bulk operation", error: err.message });
   }
 });
 
-
-
 // Get records with dynamic filters
 app.get("/api/records", async (req, res) => {
+  // done
   const filters = req.query;
   let query = {};
 
@@ -182,6 +184,7 @@ app.get("/api/records", async (req, res) => {
 });
 
 app.post("/api/records/:type", async (req, res) => {
+  // done
   const { type } = req.params;
   const newRecord = { ...req.body, type };
 
@@ -200,6 +203,7 @@ app.post("/api/records/:type", async (req, res) => {
 });
 
 app.put("/api/records/:type/:id", async (req, res) => {
+  // done
   const { id } = req.params;
 
   try {
@@ -223,6 +227,7 @@ app.put("/api/records/:type/:id", async (req, res) => {
 });
 
 app.get("/api/records/download", async (req, res) => {
+  // not done
   try {
     const recordsCollection = db.collection("records");
     const records = await recordsCollection.find().toArray();
@@ -237,26 +242,28 @@ app.get("/api/records/download", async (req, res) => {
   }
 });
 
-
 // Get stats for incoming and outgoing records
 app.get("/api/records/stats", async (req, res) => {
+  // not done
   try {
     const recordsCollection = db.collection("records");
 
     // Aggregate stats by type
-    const stats = await recordsCollection.aggregate([
-      { $group: { _id: "$type", count: { $sum: 1 } } },
-    ]).toArray();
+    const stats = await recordsCollection
+      .aggregate([{ $group: { _id: "$type", count: { $sum: 1 } } }])
+      .toArray();
 
     res.json(stats);
   } catch (err) {
-    res.status(500).json({ message: "Error retrieving stats", error: err.message });
+    res
+      .status(500)
+      .json({ message: "Error retrieving stats", error: err.message });
   }
 });
 
-
 // Customer routes
 app.post("/api/customers", async (req, res) => {
+  // done
   const { name, business, location, contact } = req.body;
 
   if (!name || !business || !location) {
@@ -283,6 +290,7 @@ app.post("/api/customers", async (req, res) => {
 });
 
 app.get("/api/customers", async (req, res) => {
+  // done
   try {
     const customersCollection = db.collection("customers");
     const customers = await customersCollection.find().toArray();
@@ -292,9 +300,38 @@ app.get("/api/customers", async (req, res) => {
   }
 });
 
+app.put("/api/customers/:id", async (req, res) => {
+  const { id } = req.params;
+  const { name, business, location, contact } = req.body;
+
+  if (!name || !business || !location) {
+    return res.status(400).json({
+      message: "Name, business, and location are required",
+    });
+  }
+
+  // editing a customer
+  try {
+    const customersCollection = db.collection("customers");
+    const result = await customersCollection.updateOne(
+      { _id: new ObjectId(id) },
+      { $set: { name, business, location, contact } }
+    );
+
+    if (result.matchedCount === 0) {
+      return res.status(404).json({ message: "Customer not found" });
+    }
+
+    res.status(200).json({ message: "Customer updated successfully" });
+  } catch (err) {
+    console.error("Error updating customer:", err);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
 
 // Search for customers with filters
 app.get("/api/customers/search", async (req, res) => {
+  // not done
   const filters = req.query;
 
   try {
@@ -302,13 +339,15 @@ app.get("/api/customers/search", async (req, res) => {
     const customers = await customersCollection.find(filters).toArray();
     res.json(customers);
   } catch (err) {
-    res.status(500).json({ message: "Error searching customers", error: err.message });
+    res
+      .status(500)
+      .json({ message: "Error searching customers", error: err.message });
   }
 });
 
-
 // Fetch dashboard stats (e.g., total products, records, customers)
 app.get("/api/dashboard/stats", async (req, res) => {
+  // not done
   try {
     const productsCollection = db.collection("products");
     const recordsCollection = db.collection("records");
@@ -326,10 +365,12 @@ app.get("/api/dashboard/stats", async (req, res) => {
       totalCustomers: customerCount,
     });
   } catch (err) {
-    res.status(500).json({ message: "Error retrieving dashboard stats", error: err.message });
+    res.status(500).json({
+      message: "Error retrieving dashboard stats",
+      error: err.message,
+    });
   }
 });
-
 
 // Start server
 app.listen(PORT, () => {
