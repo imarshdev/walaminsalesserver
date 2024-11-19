@@ -226,6 +226,24 @@ app.put("/api/records/:type/:id", async (req, res) => {
   }
 });
 
+// Delete a record by ID
+app.delete("/api/records/:id", async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const recordsCollection = db.collection("records");
+    const result = await recordsCollection.deleteOne({ _id: new ObjectId(id) });
+
+    if (result.deletedCount === 0) {
+      return res.status(404).json({ message: "Record not found" });
+    }
+
+    res.json({ message: "Record deleted successfully" });
+  } catch (err) {
+    res.status(500).json({ message: "Error deleting record", error: err.message });
+  }
+});
+
 app.get("/api/records/download", async (req, res) => {
   // not done
   try {
@@ -328,6 +346,26 @@ app.put("/api/customers/:id", async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 });
+
+
+// Delete a customer by ID
+app.delete("/api/customers/:id", async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const customersCollection = db.collection("customers");
+    const result = await customersCollection.deleteOne({ _id: new ObjectId(id) });
+
+    if (result.deletedCount === 0) {
+      return res.status(404).json({ message: "Customer not found" });
+    }
+
+    res.json({ message: "Customer deleted successfully" });
+  } catch (err) {
+    res.status(500).json({ message: "Error deleting customer", error: err.message });
+  }
+});
+
 
 // Search for customers with filters
 app.get("/api/customers/search", async (req, res) => {
