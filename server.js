@@ -383,32 +383,7 @@ app.get("/api/customers/search", async (req, res) => {
   }
 });
 
-// Fetch dashboard stats (e.g., total products, records, customers)
-app.get("/api/dashboard/stats", async (req, res) => {
-  // not done
-  try {
-    const productsCollection = db.collection("products");
-    const recordsCollection = db.collection("records");
-    const customersCollection = db.collection("customers");
 
-    const [productCount, recordCount, customerCount] = await Promise.all([
-      productsCollection.countDocuments(),
-      recordsCollection.countDocuments(),
-      customersCollection.countDocuments(),
-    ]);
-
-    res.json({
-      totalProducts: productCount,
-      totalRecords: recordCount,
-      totalCustomers: customerCount,
-    });
-  } catch (err) {
-    res.status(500).json({
-      message: "Error retrieving dashboard stats",
-      error: err.message,
-    });
-  }
-});
 
 app.get('/stats', async (req, res) => {
   try {
@@ -423,23 +398,87 @@ app.get('/stats', async (req, res) => {
 
     // Best-selling Products
     const bestSellingProducts = await recordsCollection.aggregate([
-      { $unwind: '$products' },
+      {
+        $match: { type: "outgoing" } // Focus only on outgoing records
+      },
       {
         $group: {
-          _id: '$products.productId',
-          totalSold: { $sum: '$products.quantity' },
-        },
+          _id: "$name", // Group by product name
+          totalSold: { $sum: "$quantity" } // Calculate the total quantity sold
+        }
       },
-      { $sort: { totalSold: -1 } },
-      { $limit: 5 },
+      { $sort: { totalSold: -1 } }, // Sort by totalSold in descending order
+      { $limit: 5 } // Get the top 5 best-selling products
     ]).toArray();
+    
+    console.log("Best-Selling Products:", bestSellingProducts);
+    
 
     // Top Customers
     const topCustomers = await recordsCollection.aggregate([
-      { $group: { _id: '$customerId', totalSpent: { $sum: '$totalPrice' } } },
-      { $sort: { totalSpent: -1 } },
-      { $limit: 5 },
+      {
+        $match: { type: "outgoing" } // Focus only on outgoing records
+      },
+      {
+        $group: {
+          _id: "$supplier", // Group by supplier
+          totalSpent: { $sum: { $multiply: ["$quantity", "$cost"] } } // Calculate total spent
+        }
+      },
+      { $sort: { totalSpent: -1 } }, // Sort by totalSpent in descending order
+      { $limit: 5 } // Get the top 5 customers
     ]).toArray();
+    
+    console.log("Top Customers:", topCustomers);
+    
+
+    const bestSellingProductsWithDetails = await recordsCollection.aggregate([
+      { $match: { type: "outgoing" } },
+      {
+        $group: {
+          _id: "$name",
+          totalSold: { $sum: "$quantity" }
+        }
+      },
+      {
+        $lookup: {
+          from: "products", // Name of the products collection
+          localField: "_id", // Field in the records collection
+          foreignField: "name", // Field in the products collection
+          as: "productDetails"
+        }
+      },
+      { $unwind: "$productDetails" }, // Unwind the productDetails array
+      { $sort: { totalSold: -1 } },
+      { $limit: 5 }
+    ]).toArray();
+    
+    console.log("Best-Selling Products with Details:", bestSellingProductsWithDetails);
+      
+    
+    const topCustomersWithDetails = await recordsCollection.aggregate([
+      { $match: { type: "outgoing" } },
+      {
+        $group: {
+          _id: "$supplier",
+          totalSpent: { $sum: { $multiply: ["$quantity", "$cost"] } }
+        }
+      },
+      {
+        $lookup: {
+          from: "customers", // Name of the customers collection
+          localField: "_id", // Field in the records collection
+          foreignField: "name", // Field in the customers collection
+          as: "customerDetails"
+        }
+      },
+      { $unwind: "$customerDetails" }, // Unwind the customerDetails array
+      { $sort: { totalSpent: -1 } },
+      { $limit: 5 }
+    ]).toArray();
+    
+    console.log("Top Customers with Details:", topCustomersWithDetails);
+    
 
     res.json({
       totalProducts,
@@ -447,6 +486,8 @@ app.get('/stats', async (req, res) => {
       totalRecords,
       bestSellingProducts,
       topCustomers,
+      bestSellingProductsWithDetails,
+      topCustomersWithDetails
     });
   } catch (error) {
     console.error('Error fetching stats:', error);
