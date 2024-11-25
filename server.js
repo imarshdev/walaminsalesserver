@@ -410,7 +410,7 @@ app.get("/api/dashboard/stats", async (req, res) => {
   }
 });
 
-router.get('/stats', async (req, res) => {
+app.get('/stats', async (req, res) => {
   try {
     const productsCollection = db.collection('products');
     const customersCollection = db.collection('customers');
@@ -456,7 +456,7 @@ router.get('/stats', async (req, res) => {
 
 
 
-router.get('/products/:id/stats', async (req, res) => {
+app.get('/products/:id/stats', async (req, res) => {
   try {
     const productId = req.params.id;
     const productsCollection = db.collection('products');
@@ -492,7 +492,7 @@ router.get('/products/:id/stats', async (req, res) => {
 });
 
 
-router.get('/customers/:id/stats', async (req, res) => {
+app.get('/customers/:id/stats', async (req, res) => {
   try {
     const customerId = req.params.id;
     const customersCollection = db.collection('customers');
