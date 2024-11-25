@@ -410,6 +410,118 @@ app.get("/api/dashboard/stats", async (req, res) => {
   }
 });
 
+router.get('/stats', async (req, res) => {
+  try {
+    const productsCollection = db.collection('products');
+    const customersCollection = db.collection('customers');
+    const recordsCollection = db.collection('records');
+
+    // Total Counts
+    const totalProducts = await productsCollection.countDocuments();
+    const totalCustomers = await customersCollection.countDocuments();
+    const totalRecords = await recordsCollection.countDocuments();
+
+    // Best-selling Products
+    const bestSellingProducts = await recordsCollection.aggregate([
+      { $unwind: '$products' },
+      {
+        $group: {
+          _id: '$products.productId',
+          totalSold: { $sum: '$products.quantity' },
+        },
+      },
+      { $sort: { totalSold: -1 } },
+      { $limit: 5 },
+    ]).toArray();
+
+    // Top Customers
+    const topCustomers = await recordsCollection.aggregate([
+      { $group: { _id: '$customerId', totalSpent: { $sum: '$totalPrice' } } },
+      { $sort: { totalSpent: -1 } },
+      { $limit: 5 },
+    ]).toArray();
+
+    res.json({
+      totalProducts,
+      totalCustomers,
+      totalRecords,
+      bestSellingProducts,
+      topCustomers,
+    });
+  } catch (error) {
+    console.error('Error fetching stats:', error);
+    res.status(500).json({ message: 'Error fetching stats' });
+  }
+});
+
+
+
+router.get('/products/:id/stats', async (req, res) => {
+  try {
+    const productId = req.params.id;
+    const productsCollection = db.collection('products');
+    const recordsCollection = db.collection('records');
+
+    // Fetch product details
+    const product = await productsCollection.findOne({ _id: ObjectId(productId) });
+    if (!product) return res.status(404).json({ message: 'Product not found' });
+
+    // Incoming (Restock) History
+    const incomingHistory = await recordsCollection.find({
+      type: 'incoming',
+      'products.productId': productId,
+    }).toArray();
+
+    // Outgoing (Sales) History
+    const outgoingHistory = await recordsCollection.find({
+      type: 'outgoing',
+      'products.productId': productId,
+    }).toArray();
+
+    res.json({
+      product,
+      totalStock: product.quantity, // Assuming `stock` is a field in the product document
+      incomingHistory,
+      outgoingHistory,
+      restockFrequency: incomingHistory.length,
+    });
+  } catch (error) {
+    console.error('Error fetching product stats:', error);
+    res.status(500).json({ message: 'Error fetching product stats' });
+  }
+});
+
+
+router.get('/customers/:id/stats', async (req, res) => {
+  try {
+    const customerId = req.params.id;
+    const customersCollection = db.collection('customers');
+    const recordsCollection = db.collection('records');
+
+    // Fetch customer details
+    const customer = await customersCollection.findOne({ _id: ObjectId(customerId) });
+    if (!customer) return res.status(404).json({ message: 'Customer not found' });
+
+    // Fetch records for this customer
+    const customerRecords = await recordsCollection.find({ customerId }).toArray();
+
+    // Calculate total spent
+    const totalSpent = customerRecords.reduce((sum, record) => sum + record.totalPrice, 0);
+
+    res.json({
+      customer,
+      totalRecords: customerRecords.length,
+      totalSpent,
+      records: customerRecords,
+    });
+  } catch (error) {
+    console.error('Error fetching customer stats:', error);
+    res.status(500).json({ message: 'Error fetching customer stats' });
+  }
+});
+
+
+
 // Start server
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
