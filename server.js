@@ -573,28 +573,37 @@ app.get('/products/stats', async (req, res) => {
 
 
 
-app.get('/customers/:id/stats', async (req, res) => {
+app.get('/customers/stats', async (req, res) => {
   try {
-    const customerId = req.params.id;
     const customersCollection = db.collection('customers');
     const recordsCollection = db.collection('records');
 
-    // Fetch customer details
-    const customer = await customersCollection.findOne({ _id: ObjectId(customerId) });
-    if (!customer) return res.status(404).json({ message: 'Customer not found' });
+    // Fetch all customers
+    const customers = await customersCollection.find().toArray();
+    if (!customers || customers.length === 0) return res.status(404).json({ message: 'No customers found' });
 
-    // Fetch records for this customer
-    const customerRecords = await recordsCollection.find({ customerId }).toArray();
+    // Fetch stats for each customer
+    const customerStats = await Promise.all(customers.map(async (customer) => {
+      // Fetch all records for this customer
+      const customerRecords = await recordsCollection.find({ customerId: customer._id }).toArray();
 
-    // Calculate total spent
-    const totalSpent = customerRecords.reduce((sum, record) => sum + record.totalPrice, 0);
+      // Calculate total spent
+      const totalSpent = customerRecords.reduce((sum, record) => sum + record.totalPrice, 0);
 
-    res.json({
-      customer,
-      totalRecords: customerRecords.length,
-      totalSpent,
-      records: customerRecords,
-    });
+      // Calculate total records
+      const totalRecords = customerRecords.length;
+
+      // Fetch any other relevant stats or logic here (e.g., number of products bought, frequency of purchases, etc.)
+
+      return {
+        customer,
+        totalSpent,
+        totalRecords,
+        records: customerRecords,
+      };
+    }));
+
+    res.json(customerStats);
   } catch (error) {
     console.error('Error fetching customer stats:', error);
     res.status(500).json({ message: 'Error fetching customer stats' });
