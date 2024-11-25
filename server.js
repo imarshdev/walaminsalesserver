@@ -569,39 +569,54 @@ app.get('/products/stats', async (req, res) => {
   }
 });
 
-
-
-
-
 app.get('/customers/stats', async (req, res) => {
   try {
     const customersCollection = db.collection('customers');
     const recordsCollection = db.collection('records');
+    const productsCollection = db.collection('products');
 
     // Fetch all customers
     const customers = await customersCollection.find().toArray();
     if (!customers || customers.length === 0) return res.status(404).json({ message: 'No customers found' });
 
     // Fetch stats for each customer
-    const customerStats = await Promise.all(customers.map(async (customer) => {
+    const customerStats = [];
+
+    for (const customer of customers) {
       // Fetch all records for this customer
       const customerRecords = await recordsCollection.find({ customerId: customer._id }).toArray();
 
-      // Calculate total spent
-      const totalSpent = customerRecords.reduce((sum, record) => sum + record.totalPrice, 0);
+      // Calculate total spent (cost * quantity for outgoing records)
+      const totalSpent = customerRecords.reduce((sum, record) => {
+        if (record.type === 'outgoing') {
+          return sum + (record.cost * record.quantity || 0);
+        }
+        return sum;
+      }, 0);
 
       // Calculate total records
       const totalRecords = customerRecords.length;
 
-      // Fetch any other relevant stats or logic here (e.g., number of products bought, frequency of purchases, etc.)
+      // Fetch products details for the customer records
+      const productDetails = await Promise.all(customerRecords.map(async (record) => {
+        const product = await productsCollection.findOne({ name: record.name });
+        return {
+          name: record.name,
+          quantity: record.quantity,
+          cost: record.cost,
+          totalCost: record.cost * record.quantity,  // Total cost for this record
+          supplier: record.supplier,
+          productDetails: product ? product : {},
+        };
+      }));
 
-      return {
+      customerStats.push({
         customer,
         totalSpent,
         totalRecords,
-        records: customerRecords,
-      };
-    }));
+        productDetails,  // Product details for each record
+      });
+    }
 
     res.json(customerStats);
   } catch (error) {
