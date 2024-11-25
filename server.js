@@ -497,72 +497,78 @@ app.get('/stats', async (req, res) => {
 
 
 
-app.get('/products/:id/stats', async (req, res) => {
+app.get('/products/stats', async (req, res) => {
   try {
-    const productId = req.params.id;
     const productsCollection = db.collection('products');
     const recordsCollection = db.collection('records');
 
-    // Fetch product details
-    const product = await productsCollection.findOne({ _id: ObjectId(productId) });
-    if (!product) return res.status(404).json({ message: 'Product not found' });
+    // Fetch all products
+    const products = await productsCollection.find().toArray();
+    if (!products || products.length === 0) return res.status(404).json({ message: 'No products found' });
 
-    // Fetch Incoming (Restock) History
-    const incomingHistory = await recordsCollection.find({
-      type: 'incoming',
-      name: product.name,
-    }).sort({ date: 1 }).toArray(); // Sort by date
+    // Fetch stats for each product
+    const productStats = await Promise.all(products.map(async (product) => {
+      // Fetch Incoming (Restock) History for each product
+      const incomingHistory = await recordsCollection.find({
+        type: 'incoming',
+        name: product.name,
+      }).sort({ date: 1 }).toArray();
 
-    // Fetch Outgoing (Sales) History
-    const outgoingHistory = await recordsCollection.find({
-      type: 'outgoing',
-      name: product.name,
-    }).sort({ date: 1 }).toArray(); // Sort by date
+      // Fetch Outgoing (Sales) History for each product
+      const outgoingHistory = await recordsCollection.find({
+        type: 'outgoing',
+        name: product.name,
+      }).sort({ date: 1 }).toArray();
 
-    // Calculate Cumulative Stock for Graph
-    const cumulativeStock = [];
-    let totalStock = 0;
+      // Calculate Cumulative Stock for Graph
+      const cumulativeStock = [];
+      let totalStock = 0;
 
-    // Merge and Sort by Date
-    const transactions = [...incomingHistory, ...outgoingHistory].sort((a, b) => new Date(a.date) - new Date(b.date));
+      // Merge and Sort by Date
+      const transactions = [...incomingHistory, ...outgoingHistory].sort((a, b) => new Date(a.date) - new Date(b.date));
 
-    transactions.forEach((record) => {
-      const quantity = record.type === 'incoming' ? record.quantity : -record.quantity;
-      totalStock += quantity;
-      cumulativeStock.push({
-        date: record.date,
-        type: record.type,
-        quantity: record.quantity,
-        totalStock,
+      transactions.forEach((record) => {
+        const quantity = record.type === 'incoming' ? record.quantity : -record.quantity;
+        totalStock += quantity;
+        cumulativeStock.push({
+          date: record.date,
+          type: record.type,
+          quantity: record.quantity,
+          totalStock,
+        });
       });
-    });
 
-    // Prepare Consecutive Frequency
-    const restockFrequency = incomingHistory.length;
-    const consecutiveFrequency = incomingHistory.map((record, index, arr) => {
-      const previousTotal = index === 0 ? product.quantity : arr[index - 1].quantity;
-      const change = record.quantity - previousTotal;
+      // Prepare Consecutive Frequency
+      const restockFrequency = incomingHistory.length;
+      const consecutiveFrequency = incomingHistory.map((record, index, arr) => {
+        const previousTotal = index === 0 ? product.quantity : arr[index - 1].quantity;
+        const change = record.quantity - previousTotal;
+        return {
+          date: record.date,
+          added: change,
+          cumulative: record.quantity,
+        };
+      });
+
       return {
-        date: record.date,
-        added: change,
-        cumulative: record.quantity,
+        product,
+        totalStock,
+        incomingHistory,
+        outgoingHistory,
+        cumulativeStock, // For graphing
+        consecutiveFrequency,
+        restockFrequency,
       };
-    });
+    }));
 
-    res.json({
-      product,
-      totalStock,
-      incomingHistory,
-      outgoingHistory,
-      cumulativeStock, // For graphing
-      consecutiveFrequency,
-      restockFrequency,
-    });
+    // Send the stats for all products
+    res.json(productStats);
   } catch (error) {
     console.error('Error fetching product stats:', error);
     res.status(500).json({ message: 'Error fetching product stats' });
   }
 });
+
 
 
 
