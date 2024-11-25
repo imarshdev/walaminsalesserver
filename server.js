@@ -507,30 +507,64 @@ app.get('/products/:id/stats', async (req, res) => {
     const product = await productsCollection.findOne({ _id: ObjectId(productId) });
     if (!product) return res.status(404).json({ message: 'Product not found' });
 
-    // Incoming (Restock) History
+    // Fetch Incoming (Restock) History
     const incomingHistory = await recordsCollection.find({
       type: 'incoming',
-      'products.productId': productId,
-    }).toArray();
+      name: product.name,
+    }).sort({ date: 1 }).toArray(); // Sort by date
 
-    // Outgoing (Sales) History
+    // Fetch Outgoing (Sales) History
     const outgoingHistory = await recordsCollection.find({
       type: 'outgoing',
-      'products.productId': productId,
-    }).toArray();
+      name: product.name,
+    }).sort({ date: 1 }).toArray(); // Sort by date
+
+    // Calculate Cumulative Stock for Graph
+    const cumulativeStock = [];
+    let totalStock = 0;
+
+    // Merge and Sort by Date
+    const transactions = [...incomingHistory, ...outgoingHistory].sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    transactions.forEach((record) => {
+      const quantity = record.type === 'incoming' ? record.quantity : -record.quantity;
+      totalStock += quantity;
+      cumulativeStock.push({
+        date: record.date,
+        type: record.type,
+        quantity: record.quantity,
+        totalStock,
+      });
+    });
+
+    // Prepare Consecutive Frequency
+    const restockFrequency = incomingHistory.length;
+    const consecutiveFrequency = incomingHistory.map((record, index, arr) => {
+      const previousTotal = index === 0 ? product.quantity : arr[index - 1].quantity;
+      const change = record.quantity - previousTotal;
+      return {
+        date: record.date,
+        added: change,
+        cumulative: record.quantity,
+      };
+    });
 
     res.json({
       product,
-      totalStock: product.quantity, // Assuming `stock` is a field in the product document
+      totalStock,
       incomingHistory,
       outgoingHistory,
-      restockFrequency: incomingHistory.length,
+      cumulativeStock, // For graphing
+      consecutiveFrequency,
+      restockFrequency,
     });
   } catch (error) {
     console.error('Error fetching product stats:', error);
     res.status(500).json({ message: 'Error fetching product stats' });
   }
 });
+
+
 
 
 app.get('/customers/:id/stats', async (req, res) => {
