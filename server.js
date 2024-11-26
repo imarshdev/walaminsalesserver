@@ -461,7 +461,7 @@ app.get('/stats', async (req, res) => {
       {
         $group: {
           _id: "$supplier",
-          totalSpent: { $sum: { $multiply: ["$quantity", "$cost"] } }
+          totalSpent: { $sum:  "$cost" }
         }
       },
       {
@@ -583,29 +583,25 @@ app.get('/customers/stats', async (req, res) => {
     const customerStats = [];
 
     for (const customer of customers) {
-      // Fetch all records for this customer, filtering for 'outgoing' type only
-      const customerRecords = await recordsCollection.find({ customerId: customer._id, type: 'outgoing' }).toArray();
+      // Fetch all outgoing records where the supplier is the customer
+      const customerRecords = await recordsCollection.find({ supplier: customer.name, type: 'outgoing' }).toArray();
 
-      const totalSpent = customerRecords.reduce((sum, record) => {
-        if (record.type === 'outgoing') {
-          return sum + (record.cost || 0);  // Add the cost directly without multiplying by quantity
-        }
-        return sum;
-      }, 0);
+      // Calculate total spent (sum of cost for outgoing records)
+      const totalSpent = customerRecords.reduce((sum, record) => sum + (record.cost || 0), 0);
 
-      // Calculate total records (outgoing records only)
+      // Calculate total records
       const totalRecords = customerRecords.length;
 
-      // Fetch product details for each outgoing record
-      const productDetails = await Promise.all(customerRecords.map(async (record) => {
+      // Fetch product details for the customer records
+      const recordDetails = await Promise.all(customerRecords.map(async (record) => {
         const product = await productsCollection.findOne({ name: record.name });
+
         return {
           name: record.name,
           quantity: record.quantity,
-          cost: record.cost,
-          totalCost: record.cost * record.quantity,  // Total cost for this record
-          supplier: record.supplier,
-          productDetails: product ? product : {},
+          cost: record.cost,  // Cost is already per quantity
+          supplier: record.supplier,  // Customer is the supplier in this case
+          productDetails: product ? product : {},  // Additional product details
         };
       }));
 
@@ -613,7 +609,7 @@ app.get('/customers/stats', async (req, res) => {
         customer,
         totalSpent,
         totalRecords,
-        productDetails,  // Product details for each outgoing record
+        recordDetails,  // Details of each record
       });
     }
 
