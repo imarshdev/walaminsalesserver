@@ -422,7 +422,7 @@ app.get('/stats', async (req, res) => {
       {
         $group: {
           _id: "$supplier", // Group by supplier
-          totalSpent: { $sum: { $multiply: ["$quantity", "$cost"] } } // Calculate total spent
+          totalSpent: { $sum: "$cost" } // Calculate total spent
         }
       },
       { $sort: { totalSpent: -1 } }, // Sort by totalSpent in descending order
@@ -583,21 +583,20 @@ app.get('/customers/stats', async (req, res) => {
     const customerStats = [];
 
     for (const customer of customers) {
-      // Fetch all records for this customer
-      const customerRecords = await recordsCollection.find({ customerId: customer._id }).toArray();
+      // Fetch all records for this customer, filtering for 'outgoing' type only
+      const customerRecords = await recordsCollection.find({ customerId: customer._id, type: 'outgoing' }).toArray();
 
-      // Calculate total spent (cost * quantity for outgoing records)
       const totalSpent = customerRecords.reduce((sum, record) => {
         if (record.type === 'outgoing') {
-          return sum + (record.cost * record.quantity || 0);
+          return sum + (record.cost || 0);  // Add the cost directly without multiplying by quantity
         }
         return sum;
       }, 0);
 
-      // Calculate total records
+      // Calculate total records (outgoing records only)
       const totalRecords = customerRecords.length;
 
-      // Fetch products details for the customer records
+      // Fetch product details for each outgoing record
       const productDetails = await Promise.all(customerRecords.map(async (record) => {
         const product = await productsCollection.findOne({ name: record.name });
         return {
@@ -614,7 +613,7 @@ app.get('/customers/stats', async (req, res) => {
         customer,
         totalSpent,
         totalRecords,
-        productDetails,  // Product details for each record
+        productDetails,  // Product details for each outgoing record
       });
     }
 
