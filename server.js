@@ -149,6 +149,32 @@ app.post("/api/products/bulk", async (req, res) => {
   }
 });
 
+app.put("/api/products/:name/edit", async (req, res) => {
+  const { name } = req.params; // The name of the product to edit
+  const { newDetails } = req.body; // The new details for the product
+
+  if (!newDetails || typeof newDetails !== "object") {
+    return res.status(400).json({ message: "Invalid product details" });
+  }
+
+  try {
+    const productsCollection = db.collection("products");
+    const result = await productsCollection.updateOne(
+      { name }, // Filter by the product name
+      { $set: newDetails } // Replace with new details
+    );
+
+    if (result.matchedCount === 0) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+
+    const updatedProduct = await productsCollection.findOne({ name });
+    res.json({ message: "Product updated successfully", product: updatedProduct });
+  } catch (err) {
+    res.status(500).json({ message: "Error updating product", error: err.message });
+  }
+});
+
 // Get records with dynamic filters
 app.get("/api/records", async (req, res) => {
   // done
