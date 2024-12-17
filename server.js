@@ -282,15 +282,15 @@ app.get("/api/records/stats", async (req, res) => {
 // Customer routes
 app.post("/api/customers", async (req, res) => {
   // done
-  const { name, business, location, contact } = req.body;
+  const { name, location, contact } = req.body;
 
-  if (!name || !business || !location) {
+  if (!name || !contact || !location) {
     return res
       .status(400)
-      .json({ message: "Name, business, and location are required" });
+      .json({ message: "Name, contact, and location are required" });
   }
 
-  const newCustomer = { name, business, location, contact };
+  const newCustomer = { name, location, contact };
 
   try {
     const customersCollection = db.collection("customers");
