@@ -284,10 +284,10 @@ app.post("/api/customers", async (req, res) => {
   // done
   const { name, location, contact } = req.body;
 
-  if (!name || !contact || !location) {
+  if (!name || !location) {
     return res
       .status(400)
-      .json({ message: "Name, contact, and location are required" });
+      .json({ message: "Name, and location are required" });
   }
 
   const newCustomer = { name, location, contact };
